@@ -1,303 +1,387 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-
-class DiscoveryWorkout {
-  final String title;
-  final String focus;
-  final String difficulty;
-  final List<DiscoveryExercise> exercises;
-
-  const DiscoveryWorkout({
-    required this.title,
-    required this.focus,
-    required this.difficulty,
-    required this.exercises,
-  });
-}
-
-class DiscoveryExercise {
-  final String name;
-  final String targetArea;
-  final String equipment;
-  final String instructions;
-
-  const DiscoveryExercise({
-    required this.name,
-    required this.targetArea,
-    required this.equipment,
-    required this.instructions,
-  });
-}
+import 'package:http/http.dart' as http;
+import '../models/api_exercise.dart';
 
 class DiscoveryScreen extends StatelessWidget {
   const DiscoveryScreen({super.key});
 
-  final List<DiscoveryWorkout> workouts = const [
-    DiscoveryWorkout(
-      title: 'Beginner Leg Day',
-      focus: 'Quads, Hamstrings, Glutes, Calves',
-      difficulty: 'Beginner',
-      exercises: [
-        DiscoveryExercise(
-          name: 'Leg Press',
-          targetArea: 'Quads and Glutes',
-          equipment: 'Leg Press Machine',
-          instructions: '3 sets of 10 reps. Keep your feet flat and do not lock your knees.',
-        ),
-        DiscoveryExercise(
-          name: 'Seated Hamstring Curl',
-          targetArea: 'Hamstrings',
-          equipment: 'Hamstring Curl Machine',
-          instructions: '3 sets of 12 reps. Control the movement and avoid swinging.',
-        ),
-        DiscoveryExercise(
-          name: 'Standing Calf Raise',
-          targetArea: 'Calves',
-          equipment: 'Calf Raise Machine',
-          instructions: '3 sets of 15 reps. Pause briefly at the top of each rep.',
-        ),
-      ],
-    ),
-    DiscoveryWorkout(
-      title: 'Push Day Machines',
-      focus: 'Chest, Shoulders, Triceps',
-      difficulty: 'Beginner',
-      exercises: [
-        DiscoveryExercise(
-          name: 'Machine Chest Press',
-          targetArea: 'Chest',
-          equipment: 'Chest Press Machine',
-          instructions: '3 sets of 10 reps. Keep your back against the pad.',
-        ),
-        DiscoveryExercise(
-          name: 'Shoulder Press',
-          targetArea: 'Shoulders',
-          equipment: 'Shoulder Press Machine',
-          instructions: '3 sets of 10 reps. Press upward without shrugging.',
-        ),
-        DiscoveryExercise(
-          name: 'Triceps Pushdown',
-          targetArea: 'Triceps',
-          equipment: 'Cable Machine',
-          instructions: '3 sets of 12 reps. Keep elbows close to your sides.',
-        ),
-      ],
-    ),
-    DiscoveryWorkout(
-      title: 'Pull Day Machines',
-      focus: 'Back and Biceps',
-      difficulty: 'Beginner',
-      exercises: [
-        DiscoveryExercise(
-          name: 'Lat Pulldown',
-          targetArea: 'Lats and Upper Back',
-          equipment: 'Lat Pulldown Machine',
-          instructions: '3 sets of 10 reps. Pull the bar toward your upper chest.',
-        ),
-        DiscoveryExercise(
-          name: 'Seated Cable Row',
-          targetArea: 'Middle Back',
-          equipment: 'Cable Row Machine',
-          instructions: '3 sets of 10 reps. Pull handles toward your torso.',
-        ),
-        DiscoveryExercise(
-          name: 'Cable Bicep Curl',
-          targetArea: 'Biceps',
-          equipment: 'Cable Machine',
-          instructions: '3 sets of 12 reps. Keep elbows still while curling.',
-        ),
-      ],
-    ),
-    DiscoveryWorkout(
-      title: 'Glute Focus Day',
-      focus: 'Glutes and Hamstrings',
-      difficulty: 'Intermediate',
-      exercises: [
-        DiscoveryExercise(
-          name: 'Hip Thrust Machine',
-          targetArea: 'Glutes',
-          equipment: 'Hip Thrust Machine',
-          instructions: '3 sets of 10 reps. Squeeze glutes at the top.',
-        ),
-        DiscoveryExercise(
-          name: 'Cable Kickback',
-          targetArea: 'Glutes',
-          equipment: 'Cable Machine',
-          instructions: '3 sets of 12 reps per leg. Keep the motion controlled.',
-        ),
-        DiscoveryExercise(
-          name: 'Seated Hamstring Curl',
-          targetArea: 'Hamstrings',
-          equipment: 'Hamstring Curl Machine',
-          instructions: '3 sets of 12 reps. Use a slow return.',
-        ),
-      ],
-    ),
-    DiscoveryWorkout(
-      title: 'Core Machine Circuit',
-      focus: 'Abs and Core Stability',
-      difficulty: 'Beginner',
-      exercises: [
-        DiscoveryExercise(
-          name: 'Ab Crunch Machine',
-          targetArea: 'Upper Abs',
-          equipment: 'Ab Crunch Machine',
-          instructions: '3 sets of 12 reps. Crunch slowly and avoid pulling with your arms.',
-        ),
-        DiscoveryExercise(
-          name: 'Torso Rotation',
-          targetArea: 'Obliques',
-          equipment: 'Torso Rotation Machine',
-          instructions: '3 sets of 10 reps per side. Rotate with control.',
-        ),
-        DiscoveryExercise(
-          name: 'Cable Woodchop',
-          targetArea: 'Core and Obliques',
-          equipment: 'Cable Machine',
-          instructions: '3 sets of 10 reps per side. Keep your core tight.',
-        ),
-      ],
-    ),
-  ];
+  Future<List<ApiExercise>> fetchExercises() async {
+    final Uri url = Uri.parse(
+      'https://oss.exercisedb.dev/api/v1/exercises',
+    );
 
-  void _showWorkoutDetails(BuildContext context, DiscoveryWorkout workout) {
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      final decoded = jsonDecode(response.body);
+
+      final List rawExercises;
+
+      if (decoded is List) {
+        rawExercises = decoded;
+      } else if (decoded is Map<String, dynamic> && decoded['data'] is List) {
+        rawExercises = decoded['data'];
+      } else if (decoded is Map<String, dynamic> && decoded['results'] is List) {
+        rawExercises = decoded['results'];
+      } else {
+        rawExercises = [];
+      }
+
+      final exercises = rawExercises
+          .map(
+            (item) => ApiExercise.fromJson(item as Map<String, dynamic>),
+      )
+          .where((exercise) {
+        final hasName = exercise.name.trim().isNotEmpty;
+        final hasGif = exercise.gifUrl.trim().isNotEmpty;
+        return hasName && hasGif;
+      }).toList();
+
+      return exercises.take(30).toList();
+    } else {
+      throw Exception('Failed to load exercises.');
+    }
+  }
+
+  void _showExerciseDetails(BuildContext context, ApiExercise exercise) {
     showModalBottomSheet(
       context: context,
       showDragHandle: true,
       isScrollControlled: true,
       builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  workout.title,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.88,
+          minChildSize: 0.45,
+          maxChildSize: 0.95,
+          builder: (context, scrollController) {
+            return SingleChildScrollView(
+              controller: scrollController,
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 30),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: Image.network(
+                      exercise.gifUrl,
+                      width: double.infinity,
+                      height: 260,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          height: 260,
+                          width: double.infinity,
+                          color: Colors.green.shade50,
+                          child: Icon(
+                            Icons.fitness_center,
+                            size: 72,
+                            color: Colors.green.shade700,
+                          ),
+                        );
+                      },
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  workout.focus,
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: Colors.grey.shade700,
-                  ),
-                ),
-                const SizedBox(height: 20),
 
-                for (final exercise in workout.exercises)
-                  Card(
-                    margin: const EdgeInsets.only(bottom: 14),
-                    shape: RoundedRectangleBorder(
+                  const SizedBox(height: 20),
+
+                  Text(
+                    _formatTitle(exercise.name),
+                    style: const TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  _InfoChip(
+                    icon: Icons.accessibility_new,
+                    label: 'Target: ${exercise.targetText}',
+                  ),
+                  const SizedBox(height: 8),
+                  _InfoChip(
+                    icon: Icons.fitness_center,
+                    label: 'Equipment: ${exercise.equipmentText}',
+                  ),
+                  const SizedBox(height: 8),
+                  _InfoChip(
+                    icon: Icons.category_outlined,
+                    label: 'Body Part: ${exercise.bodyPartText}',
+                  ),
+                  const SizedBox(height: 8),
+                  _InfoChip(
+                    icon: Icons.add_circle_outline,
+                    label: 'Secondary: ${exercise.secondaryText}',
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  const Text(
+                    'Instructions',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  Text(
+                    exercise.instructionText,
+                    style: TextStyle(
+                      fontSize: 15,
+                      height: 1.45,
+                      color: Colors.grey.shade800,
+                    ),
+                  ),
+
+                  const SizedBox(height: 28),
+
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
                       borderRadius: BorderRadius.circular(18),
                     ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.all(16),
-                      leading: CircleAvatar(
-                        backgroundColor: Colors.green.shade100,
-                        child: Icon(
-                          Icons.fitness_center,
-                          color: Colors.green.shade800,
-                        ),
-                      ),
-                      title: Text(
-                        exercise.name,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      subtitle: Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: Text(
-                          'Target: ${exercise.targetArea}\n'
-                              'Equipment: ${exercise.equipment}\n'
-                              '${exercise.instructions}',
-                        ),
+                    child: Text(
+                      'Use this as inspiration when creating your own workout in the Add tab.',
+                      style: TextStyle(
+                        color: Colors.green.shade900,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
-              ],
-            ),
-          ),
+                ],
+              ),
+            );
+          },
         );
       },
     );
   }
 
+  String _formatTitle(String text) {
+    return text
+        .split(' ')
+        .map((word) {
+      if (word.isEmpty) return word;
+      return word[0].toUpperCase() + word.substring(1);
+    })
+        .join(' ');
+  }
+
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(18),
-      itemCount: workouts.length,
-      itemBuilder: (context, index) {
-        final workout = workouts[index];
+    return FutureBuilder<List<ApiExercise>>(
+      future: fetchExercises(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(height: 18),
+                Text(
+                  'Loading live exercises...',
+                  style: TextStyle(
+                    color: Colors.grey.shade700,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 16),
-          elevation: 3,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(22),
-          ),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(22),
-            onTap: () => _showWorkoutDetails(context, workout),
+        if (snapshot.hasError) {
+          return Center(
             child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Row(
+              padding: const EdgeInsets.all(28),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Container(
-                    width: 58,
-                    height: 58,
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade100,
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: Icon(
-                      Icons.sports_gymnastics,
-                      color: Colors.green.shade800,
-                      size: 32,
+                  Icon(
+                    Icons.wifi_off,
+                    size: 72,
+                    color: Colors.grey.shade500,
+                  ),
+                  const SizedBox(height: 18),
+                  const Text(
+                    'Could not load ExerciseDB data.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          workout.title,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          workout.focus,
-                          style: TextStyle(
-                            color: Colors.grey.shade700,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '${workout.exercises.length} exercises • ${workout.difficulty}',
-                          style: TextStyle(
-                            color: Colors.green.shade700,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
+                  const SizedBox(height: 8),
+                  Text(
+                    'Check your internet connection and try again.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.grey.shade700,
                     ),
                   ),
-                  const Icon(Icons.chevron_right),
                 ],
               ),
             ),
-          ),
+          );
+        }
+
+        final exercises = snapshot.data ?? [];
+
+        if (exercises.isEmpty) {
+          return const Center(
+            child: Text('No exercises found.'),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: exercises.length,
+          itemBuilder: (context, index) {
+            final exercise = exercises[index];
+
+            return Card(
+              margin: const EdgeInsets.only(bottom: 18),
+              elevation: 3,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(24),
+                onTap: () => _showExerciseDetails(context, exercise),
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(18),
+                        child: Image.network(
+                          exercise.gifUrl,
+                          width: 105,
+                          height: 105,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              width: 105,
+                              height: 105,
+                              color: Colors.green.shade50,
+                              child: Icon(
+                                Icons.fitness_center,
+                                color: Colors.green.shade700,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+
+                      const SizedBox(width: 14),
+
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _formatTitle(exercise.name),
+                              style: const TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+
+                            const SizedBox(height: 8),
+
+                            Text(
+                              'Target: ${exercise.targetText}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+
+                            const SizedBox(height: 4),
+
+                            Text(
+                              'Equipment: ${exercise.equipmentText}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+
+                            const SizedBox(height: 10),
+
+                            Text(
+                              'Tap for instructions',
+                              style: TextStyle(
+                                color: Colors.green.shade700,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const Icon(Icons.chevron_right),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
         );
       },
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _InfoChip({
+    required this.icon,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        horizontal: 14,
+        vertical: 12,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            size: 20,
+            color: Colors.green.shade700,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
