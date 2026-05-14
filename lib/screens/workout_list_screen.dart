@@ -3,6 +3,7 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:scoped_model/scoped_model.dart';
 import '../app_model.dart';
 import '../models/workout.dart';
+import '../models/exercise.dart';
 import 'workout_detail_screen.dart';
 
 class WorkoutListScreen extends StatelessWidget {
@@ -13,17 +14,29 @@ class WorkoutListScreen extends StatelessWidget {
       AppModel model,
       Workout workout,
       ) async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+
+    final List<Exercise> savedExercises = workout.id == null
+        ? []
+        : await model.getExercisesForWorkout(workout.id!);
+
     await model.deleteWorkout(workout);
 
     if (!context.mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
+    messenger.clearSnackBars();
+
+    messenger.showSnackBar(
       SnackBar(
+        duration: const Duration(seconds: 5),
         content: Text('${workout.title} deleted'),
         action: SnackBarAction(
           label: 'UNDO',
           onPressed: () async {
-            await model.restoreWorkout(workout);
+            await model.restoreWorkoutWithExercises(
+              workout,
+              savedExercises,
+            );
           },
         ),
       ),
@@ -35,7 +48,9 @@ class WorkoutListScreen extends StatelessWidget {
     return ScopedModelDescendant<AppModel>(
       builder: (context, child, model) {
         if (model.isLoading) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
         }
 
         if (model.workouts.isEmpty) {

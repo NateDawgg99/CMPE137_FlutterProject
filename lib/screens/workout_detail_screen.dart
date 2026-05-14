@@ -17,118 +17,13 @@ class WorkoutDetailScreen extends StatefulWidget {
 }
 
 class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
-  Future<List<Exercise>>? _exerciseFuture;
+  late Future<List<Exercise>> _exerciseFuture;
 
   @override
   void initState() {
     super.initState();
-    _refreshExercises();
-  }
-
-  void _refreshExercises() {
     final model = ScopedModel.of<AppModel>(context);
     _exerciseFuture = model.getExercisesForWorkout(widget.workout.id!);
-  }
-
-  Future<void> _showAddExerciseDialog(AppModel model) async {
-    final formKey = GlobalKey<FormState>();
-    final nameController = TextEditingController();
-    final targetController = TextEditingController();
-    final equipmentController = TextEditingController();
-    final instructionsController = TextEditingController();
-
-    await showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Add Exercise'),
-          content: Form(
-            key: formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  TextFormField(
-                    controller: nameController,
-                    decoration: const InputDecoration(labelText: 'Exercise'),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Enter exercise name';
-                      }
-                      return null;
-                    },
-                  ),
-                  TextFormField(
-                    controller: targetController,
-                    decoration: const InputDecoration(labelText: 'Target Area'),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Enter target area';
-                      }
-                      return null;
-                    },
-                  ),
-                  TextFormField(
-                    controller: equipmentController,
-                    decoration: const InputDecoration(labelText: 'Equipment'),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Enter equipment';
-                      }
-                      return null;
-                    },
-                  ),
-                  TextFormField(
-                    controller: instructionsController,
-                    decoration: const InputDecoration(labelText: 'Instructions'),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Enter instructions';
-                      }
-                      return null;
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (!formKey.currentState!.validate()) return;
-
-                await model.addExercise(
-                  Exercise(
-                    workoutId: widget.workout.id!,
-                    name: nameController.text.trim(),
-                    targetArea: targetController.text.trim(),
-                    equipment: equipmentController.text.trim(),
-                    instructions: instructionsController.text.trim(),
-                  ),
-                );
-
-                if (!mounted) return;
-
-                setState(() {
-                  _refreshExercises();
-                });
-
-                Navigator.pop(dialogContext);
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        );
-      },
-    );
-
-    nameController.dispose();
-    targetController.dispose();
-    equipmentController.dispose();
-    instructionsController.dispose();
   }
 
   @override
@@ -139,74 +34,182 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           appBar: AppBar(
             title: Text(widget.workout.title),
           ),
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: () => _showAddExerciseDialog(model),
-            icon: const Icon(Icons.add),
-            label: const Text('Exercise'),
-          ),
           body: FutureBuilder<List<Exercise>>(
             future: _exerciseFuture,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
+                return const Center(
+                  child: CircularProgressIndicator(),
+                );
               }
 
               final exercises = snapshot.data ?? [];
 
-              if (exercises.isEmpty) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(28),
-                    child: Text(
-                      'No exercises added yet.\nTap the Exercise button to add machines, movements, and target areas.',
-                      textAlign: TextAlign.center,
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Card(
+                      elevation: 3,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(22),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            CircleAvatar(
+                              radius: 28,
+                              backgroundColor: Colors.green.shade100,
+                              child: Icon(
+                                Icons.fitness_center,
+                                color: Colors.green.shade800,
+                                size: 30,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    widget.workout.title,
+                                    style: const TextStyle(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Focus: ${widget.workout.focusArea}',
+                                    style: TextStyle(
+                                      color: Colors.grey.shade800,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    widget.workout.notes,
+                                    style: TextStyle(
+                                      color: Colors.grey.shade700,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 22),
+
+                    const Text(
+                      'Exercises',
                       style: TextStyle(
-                        color: Colors.grey.shade700,
-                        fontSize: 16,
+                        fontSize: 21,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
-                );
-              }
 
-              return ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: exercises.length,
-                itemBuilder: (context, index) {
-                  final exercise = exercises[index];
+                    const SizedBox(height: 12),
 
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.all(16),
-                      title: Text(
-                        exercise.name,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
+                    if (exercises.isEmpty)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(22),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(20),
                         ),
-                      ),
-                      subtitle: Padding(
-                        padding: const EdgeInsets.only(top: 8),
                         child: Text(
-                          'Targets: ${exercise.targetArea}\nEquipment: ${exercise.equipment}\n${exercise.instructions}',
+                          'No exercises are attached to this workout.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.grey.shade700,
+                          ),
                         ),
-                      ),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete_outline),
-                        onPressed: () async {
-                          await model.deleteExercise(exercise);
+                      )
+                    else
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: exercises.length,
+                        itemBuilder: (context, index) {
+                          final exercise = exercises[index];
 
-                          setState(() {
-                            _refreshExercises();
-                          });
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 14),
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    width: 46,
+                                    height: 46,
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.shade50,
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    child: Icon(
+                                      Icons.sports_gymnastics,
+                                      color: Colors.green.shade700,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          exercise.name,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 17,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'Target: ${exercise.targetArea}',
+                                          style: TextStyle(
+                                            color: Colors.grey.shade800,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Equipment: ${exercise.equipment}',
+                                          style: TextStyle(
+                                            color: Colors.grey.shade800,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 10),
+                                        Text(
+                                          exercise.instructions,
+                                          style: TextStyle(
+                                            color: Colors.grey.shade700,
+                                            height: 1.4,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
                         },
                       ),
-                    ),
-                  );
-                },
+                  ],
+                ),
               );
             },
           ),

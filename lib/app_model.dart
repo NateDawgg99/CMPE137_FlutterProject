@@ -29,19 +29,36 @@ class AppModel extends Model {
     await loadWorkouts();
   }
 
-  Future<void> deleteWorkout(Workout workout) async {
-    if (workout.id == null) return;
-
-    await DatabaseWorker.instance.deleteWorkout(workout.id!);
+  Future<Workout> addWorkoutAndReturn(Workout workout) async {
+    final savedWorkout = await DatabaseWorker.instance.createWorkout(workout);
     await loadWorkouts();
+    return savedWorkout;
   }
 
-  Future<void> restoreWorkout(Workout workout) async {
-    await DatabaseWorker.instance.createWorkout(
+  Future<void> addDiscoveredExerciseAsWorkout({
+    required String workoutTitle,
+    required String focusArea,
+    required String notes,
+    required String exerciseName,
+    required String targetArea,
+    required String equipment,
+    required String instructions,
+  }) async {
+    final savedWorkout = await DatabaseWorker.instance.createWorkout(
       Workout(
-        title: workout.title,
-        focusArea: workout.focusArea,
-        notes: workout.notes,
+        title: workoutTitle,
+        focusArea: focusArea,
+        notes: notes,
+      ),
+    );
+
+    await DatabaseWorker.instance.createExercise(
+      Exercise(
+        workoutId: savedWorkout.id!,
+        name: exerciseName,
+        targetArea: targetArea,
+        equipment: equipment,
+        instructions: instructions,
       ),
     );
 
@@ -62,5 +79,51 @@ class AppModel extends Model {
 
     await DatabaseWorker.instance.deleteExercise(exercise.id!);
     notifyListeners();
+  }
+
+  Future<void> deleteWorkout(Workout workout) async {
+    if (workout.id == null) return;
+
+    await DatabaseWorker.instance.deleteWorkout(workout.id!);
+    await loadWorkouts();
+  }
+
+  Future<void> restoreWorkout(Workout workout) async {
+    await DatabaseWorker.instance.createWorkout(
+      Workout(
+        title: workout.title,
+        focusArea: workout.focusArea,
+        notes: workout.notes,
+      ),
+    );
+
+    await loadWorkouts();
+  }
+
+  Future<void> restoreWorkoutWithExercises(
+      Workout workout,
+      List<Exercise> exercises,
+      ) async {
+    final restoredWorkout = await DatabaseWorker.instance.createWorkout(
+      Workout(
+        title: workout.title,
+        focusArea: workout.focusArea,
+        notes: workout.notes,
+      ),
+    );
+
+    for (final exercise in exercises) {
+      await DatabaseWorker.instance.createExercise(
+        Exercise(
+          workoutId: restoredWorkout.id!,
+          name: exercise.name,
+          targetArea: exercise.targetArea,
+          equipment: exercise.equipment,
+          instructions: exercise.instructions,
+        ),
+      );
+    }
+
+    await loadWorkouts();
   }
 }

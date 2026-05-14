@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:scoped_model/scoped_model.dart';
+import '../app_model.dart';
 import '../models/api_exercise.dart';
 
 class DiscoveryScreen extends StatefulWidget {
@@ -99,7 +101,6 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
         return true;
       }
 
-      // Helpful aliases so common gym searches work better.
       if (query == 'abs' || query == 'core') {
         return searchableText.contains('abs') ||
             searchableText.contains('abdominals') ||
@@ -162,12 +163,41 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     });
   }
 
+  Future<void> _saveExerciseToMyWorkouts(
+      BuildContext sheetContext,
+      ApiExercise exercise,
+      ) async {
+    final model = ScopedModel.of<AppModel>(context);
+
+    final workoutTitle = '${_formatTitle(exercise.name)} Workout';
+
+    await model.addDiscoveredExerciseAsWorkout(
+      workoutTitle: workoutTitle,
+      focusArea: exercise.targetText,
+      notes: 'Imported from ExerciseDB Discovery. Equipment: ${exercise.equipmentText}',
+      exerciseName: _formatTitle(exercise.name),
+      targetArea: exercise.targetText,
+      equipment: exercise.equipmentText,
+      instructions: exercise.instructionText,
+    );
+
+    if (!mounted) return;
+
+    Navigator.pop(sheetContext);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$workoutTitle saved to My Workouts'),
+      ),
+    );
+  }
+
   void _showExerciseDetails(BuildContext context, ApiExercise exercise) {
     showModalBottomSheet(
       context: context,
       showDragHandle: true,
       isScrollControlled: true,
-      builder: (context) {
+      builder: (sheetContext) {
         return DraggableScrollableSheet(
           expand: false,
           initialChildSize: 0.88,
@@ -201,7 +231,9 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                       },
                     ),
                   ),
+
                   const SizedBox(height: 20),
+
                   Text(
                     _formatTitle(exercise.name),
                     style: const TextStyle(
@@ -209,7 +241,9 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+
                   const SizedBox(height: 14),
+
                   _InfoChip(
                     icon: Icons.accessibility_new,
                     label: 'Target: ${exercise.targetText}',
@@ -229,7 +263,23 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                     icon: Icons.add_circle_outline,
                     label: 'Secondary: ${exercise.secondaryText}',
                   ),
+
+                  const SizedBox(height: 22),
+
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => _saveExerciseToMyWorkouts(
+                        sheetContext,
+                        exercise,
+                      ),
+                      icon: const Icon(Icons.save_alt),
+                      label: const Text('Save to My Workouts'),
+                    ),
+                  ),
+
                   const SizedBox(height: 24),
+
                   const Text(
                     'Instructions',
                     style: TextStyle(
@@ -237,7 +287,9 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+
                   const SizedBox(height: 10),
+
                   Text(
                     exercise.instructionText,
                     style: TextStyle(
@@ -246,7 +298,9 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                       color: Colors.grey.shade800,
                     ),
                   ),
+
                   const SizedBox(height: 28),
+
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(14),
@@ -255,7 +309,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                       borderRadius: BorderRadius.circular(18),
                     ),
                     child: Text(
-                      'Use this as inspiration when creating your own workout in the Add tab.',
+                      'This exercise is imported from live API data and can be saved locally using SQLite.',
                       style: TextStyle(
                         color: Colors.green.shade900,
                         fontWeight: FontWeight.w500,
@@ -362,7 +416,9 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                   },
                 ),
               ),
+
               const SizedBox(width: 14),
+
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -374,7 +430,9 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+
                     const SizedBox(height: 8),
+
                     Text(
                       'Target: ${exercise.targetText}',
                       maxLines: 1,
@@ -383,7 +441,9 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                         color: Colors.grey.shade700,
                       ),
                     ),
+
                     const SizedBox(height: 4),
+
                     Text(
                       'Equipment: ${exercise.equipmentText}',
                       maxLines: 1,
@@ -392,9 +452,11 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                         color: Colors.grey.shade700,
                       ),
                     ),
+
                     const SizedBox(height: 10),
+
                     Text(
-                      'Tap for instructions',
+                      'Tap to view and save',
                       style: TextStyle(
                         color: Colors.green.shade700,
                         fontWeight: FontWeight.w600,
@@ -403,6 +465,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                   ],
                 ),
               ),
+
               const Icon(Icons.chevron_right),
             ],
           ),
